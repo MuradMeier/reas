@@ -174,5 +174,4 @@ FRONTEND_URL = os.environ.get('FRONTEND_URL', 'http://localhost:3000')
 ADMIN_URL = os.environ.get('ADMIN_URL', 'http://localhost:3000')
 
 # -------------------- GDAL (для PostGIS) --------------------
-# Для Render может потребоваться, оставляем
-GDAL_LIBRARY_PATH = '/usr/lib/libgdal.so'
+#GDAL_LIBRARY_PATH = '/usr/lib/libgdal.so'
