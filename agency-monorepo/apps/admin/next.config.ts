@@ -1,9 +1,15 @@
-/** @type {import('next').NextConfig} */
-const nextConfig = {
+import type { NextConfig } from 'next';
+
+const nextConfig: NextConfig = {
+  transpilePackages: [
+    '@repo/api-client',
+    '@repo/hooks',
+    '@repo/ui',
+    '@repo/types'
+  ],
   images: {
-    unoptimized: true, // отключает обработку через /_next/image
-    // remotePatterns можно оставить или удалить – они не нужны при unoptimized
+    unoptimized: true,
   },
 };
 
-module.exports = nextConfig;
+export default nextConfig;

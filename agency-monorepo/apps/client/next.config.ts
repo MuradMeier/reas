@@ -2,6 +2,12 @@ import type { NextConfig } from 'next';
 import path from 'path';
 
 const nextConfig: NextConfig = {
+  transpilePackages: [
+    '@repo/api-client',
+    '@repo/hooks',
+    '@repo/ui',
+    '@repo/types'
+  ],
   webpack: (config) => {
     config.resolve.alias = {
       ...config.resolve.alias,
@@ -9,9 +15,8 @@ const nextConfig: NextConfig = {
     };
     return config;
   },
-images: {
-    unoptimized: true, // отключает обработку через /_next/image
-    // remotePatterns можно оставить или удалить – они не нужны при unoptimized
+  images: {
+    unoptimized: true,
   },
 };
 
