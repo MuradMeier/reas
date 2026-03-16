@@ -1,0 +1,15 @@
+version: '3.8'
+services:
+  db:
+    image: postgis/postgis:15-3.4
+    container_name: realty_postgis
+    environment:
+      POSTGRES_DB: realty_db
+      POSTGRES_USER: realty_user
+      POSTGRES_PASSWORD: realty_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+volumes:
+  postgres_data:

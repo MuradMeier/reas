@@ -1,0 +1,37 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+/* Те же правила для клиентской части */
+input, select, textarea, button, .card, .popover-content, .select-content, .dropdown-content,
+.modal-content, dialog, [role="dialog"], [role="listbox"], [data-radix-popper-content-wrapper] {
+  background-color: white !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.bg-background {
+  background-color: hsl(var(--background)) !important;
+}
+
+.text-foreground {
+  color: hsl(var(--foreground)) !important;
+}
+
+input:focus, select:focus, textarea:focus, button:focus {
+  outline: 2px solid hsl(var(--ring)) !important;
+  outline-offset: 2px;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fadeIn {
+  animation: fadeIn 0.5s ease-out;
+}
+
+body {
+  @apply bg-gray-50;
+}
+.container {
+  @apply px-4 mx-auto;
+}

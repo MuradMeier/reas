@@ -1,0 +1,254 @@
+import React, { useState } from 'react';
+import { UseFormRegister, UseFormWatch, UseFormSetValue } from 'react-hook-form';
+import { useQuery } from '@tanstack/react-query';
+import { Button } from './ui/button';
+import { Input } from './ui/input';
+import { Label } from './ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from './ui/command';
+import { Check, ChevronsUpDown } from 'lucide-react';
+import { cn } from './lib/utils';
+import api from '@repo/api-client';
+import { useDebounce } from '@repo/hooks';
+import { Region, City, District, MetroStation } from '@repo/types';
+
+interface LocationFieldsProps {
+  register: UseFormRegister<any>;
+  watch: UseFormWatch<any>;
+  setValue: UseFormSetValue<any>;
+}
+
+export function LocationFields({ register, watch, setValue }: LocationFieldsProps) {
+  const [citySearch, setCitySearch] = useState('');
+  const [districtSearch, setDistrictSearch] = useState('');
+  const [metroSearch, setMetroSearch] = useState('');
+  const [cityOpen, setCityOpen] = useState(false);
+  const [districtOpen, setDistrictOpen] = useState(false);
+  const [metroOpen, setMetroOpen] = useState(false);
+
+  const region = watch('region');
+  const cityId = watch('city');
+  const districtId = watch('district');
+  const metroId = watch('metro');
+  const exactAddress = watch('exactAddress');
+
+  const debouncedCitySearch = useDebounce(citySearch, 300);
+  const debouncedDistrictSearch = useDebounce(districtSearch, 300);
+  const debouncedMetroSearch = useDebounce(metroSearch, 300);
+
+  const { data: regions = [] } = useQuery({
+    queryKey: ['regions'],
+    queryFn: async () => {
+      const res = await api.get('/regions/');
+      return res.data.results || res.data || [];
+    },
+  });
+
+  const { data: cities = [], isLoading: citiesLoading } = useQuery({
+    queryKey: ['cities', region, debouncedCitySearch],
+    queryFn: async () => {
+      if (!region && !debouncedCitySearch) return [];
+      const params = new URLSearchParams();
+      if (region) params.append('region', region);
+      if (debouncedCitySearch) params.append('search', debouncedCitySearch);
+      const res = await api.get(`/cities/?${params.toString()}`);
+      return res.data.results || res.data || [];
+    },
+    enabled: !!(region || debouncedCitySearch),
+  });
+
+  const { data: districts = [], isLoading: districtsLoading } = useQuery({
+    queryKey: ['districts', cityId, debouncedDistrictSearch],
+    queryFn: async () => {
+      if (!cityId && !debouncedDistrictSearch) return [];
+      const params = new URLSearchParams();
+      if (cityId) params.append('city', cityId);
+      if (debouncedDistrictSearch) params.append('search', debouncedDistrictSearch);
+      const res = await api.get(`/districts/?${params.toString()}`);
+      return res.data.results || res.data || [];
+    },
+    enabled: !!(cityId || debouncedDistrictSearch),
+  });
+
+  const { data: metroStations = [], isLoading: metroLoading } = useQuery({
+    queryKey: ['metro', cityId, debouncedMetroSearch],
+    queryFn: async () => {
+      if (!cityId && !debouncedMetroSearch) return [];
+      const params = new URLSearchParams();
+      if (cityId) params.append('city', cityId);
+      if (debouncedMetroSearch) params.append('search', debouncedMetroSearch);
+      const res = await api.get(`/metro-stations/?${params.toString()}`);
+      return res.data.results || res.data || [];
+    },
+    enabled: !!(cityId || debouncedMetroSearch),
+  });
+
+  React.useEffect(() => {
+    setValue('city', '');
+    setValue('district', '');
+    setValue('metro', '');
+  }, [region, setValue]);
+
+  React.useEffect(() => {
+    setValue('district', '');
+    setValue('metro', '');
+  }, [cityId, setValue]);
+
+  return (
+    <div className="space-y-4 border p-4 rounded-lg">
+      <h3 className="text-lg font-medium">Где ищем?</h3>
+
+      {/* Регион */}
+      <div className="space-y-2">
+        <Label>Область/регион</Label>
+        <Select onValueChange={(value) => setValue('region', value)} value={region}>
+          <SelectTrigger>
+            <SelectValue placeholder="Выберите регион" />
+          </SelectTrigger>
+          <SelectContent>
+            {regions.map((r: Region) => (
+              <SelectItem key={r.id} value={String(r.id)}>
+                {r.nazvanie}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Город */}
+      <div className="space-y-2">
+        <Label>Город</Label>
+        <Popover open={cityOpen} onOpenChange={setCityOpen}>
+          <PopoverTrigger asChild>
+            <Button variant="outline" role="combobox" aria-expanded={cityOpen} className="w-full justify-between">
+              {cityId ? cities.find((c: City) => String(c.id) === cityId)?.name : 'Введите или выберите город...'}
+              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-full p-0">
+            <Command shouldFilter={false}>
+              <CommandInput placeholder="Поиск города..." value={citySearch} onValueChange={setCitySearch} />
+              {citiesLoading && <CommandEmpty>Загрузка...</CommandEmpty>}
+              {!citiesLoading && cities.length === 0 && <CommandEmpty>Города не найдены</CommandEmpty>}
+              <CommandGroup>
+                {cities.map((c: City) => (
+                  <CommandItem
+                    key={c.id}
+                    value={String(c.id)}
+                    onSelect={(currentValue) => {
+                      setValue('city', currentValue);
+                      setCityOpen(false);
+                      setCitySearch('');
+                    }}
+                  >
+                    <Check className={cn('mr-2 h-4 w-4', cityId === String(c.id) ? 'opacity-100' : 'opacity-0')} />
+                    {c.nazvanie}
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            </Command>
+          </PopoverContent>
+        </Popover>
+      </div>
+
+      {cityId && (
+        <div className="space-y-2">
+          <Label>Радиус от города (км)</Label>
+          <Input type="number" placeholder="Например: 10" {...register('cityRadius')} />
+        </div>
+      )}
+
+      {(cityId || districtSearch) && (
+        <div className="space-y-2">
+          <Label>Район</Label>
+          <Popover open={districtOpen} onOpenChange={setDistrictOpen}>
+            <PopoverTrigger asChild>
+              <Button variant="outline" role="combobox" aria-expanded={districtOpen} className="w-full justify-between">
+                {districtId ? districts.find((d: District) => String(d.id) === districtId)?.name : 'Введите или выберите район...'}
+                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-full p-0">
+              <Command shouldFilter={false}>
+                <CommandInput placeholder="Поиск района..." value={districtSearch} onValueChange={setDistrictSearch} />
+                {districtsLoading && <CommandEmpty>Загрузка...</CommandEmpty>}
+                {!districtsLoading && districts.length === 0 && <CommandEmpty>Районы не найдены</CommandEmpty>}
+                <CommandGroup>
+                  {districts.map((d: District) => (
+                    <CommandItem
+                      key={d.id}
+                      value={String(d.id)}
+                      onSelect={(currentValue) => {
+                        setValue('district', currentValue);
+                        setDistrictOpen(false);
+                        setDistrictSearch('');
+                      }}
+                    >
+                      <Check className={cn('mr-2 h-4 w-4', districtId === String(d.id) ? 'opacity-100' : 'opacity-0')} />
+                      {d.nazvanie}
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              </Command>
+            </PopoverContent>
+          </Popover>
+        </div>
+      )}
+
+      <div className="space-y-2">
+        <Label>Микрорайон</Label>
+        <Input placeholder="Например: Центральный" {...register('microdistrict')} />
+      </div>
+
+      {(cityId || metroSearch) && (
+        <div className="space-y-2">
+          <Label>Метро</Label>
+          <Popover open={metroOpen} onOpenChange={setMetroOpen}>
+            <PopoverTrigger asChild>
+              <Button variant="outline" role="combobox" aria-expanded={metroOpen} className="w-full justify-between">
+                {metroId ? metroStations.find((m: MetroStation) => String(m.id) === metroId)?.name : 'Введите или выберите станцию...'}
+                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-full p-0">
+              <Command shouldFilter={false}>
+                <CommandInput placeholder="Поиск станции..." value={metroSearch} onValueChange={setMetroSearch} />
+                {metroLoading && <CommandEmpty>Загрузка...</CommandEmpty>}
+                {!metroLoading && metroStations.length === 0 && <CommandEmpty>Станции не найдены</CommandEmpty>}
+                <CommandGroup>
+                  {metroStations.map((m: MetroStation) => (
+                    <CommandItem
+                      key={m.id}
+                      value={String(m.id)}
+                      onSelect={(currentValue) => {
+                        setValue('metro', currentValue);
+                        setMetroOpen(false);
+                        setMetroSearch('');
+                      }}
+                    >
+                      <Check className={cn('mr-2 h-4 w-4', metroId === String(m.id) ? 'opacity-100' : 'opacity-0')} />
+                      {m.nazvanie}
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              </Command>
+            </PopoverContent>
+          </Popover>
+        </div>
+      )}
+
+      <div className="space-y-2">
+        <Label>Точный адрес</Label>
+        <Input placeholder="Улица, дом" {...register('exactAddress')} />
+      </div>
+
+      {exactAddress && (
+        <div className="space-y-2">
+          <Label>Радиус от адреса (км)</Label>
+          <Input type="number" placeholder="Например: 5" {...register('addressRadius')} />
+        </div>
+      )}
+    </div>
+  );
+}
