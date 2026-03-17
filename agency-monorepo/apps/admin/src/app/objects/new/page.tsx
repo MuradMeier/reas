@@ -2,6 +2,7 @@
 
 import { useSearchParams } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
+import { Suspense } from 'react';
 import { useRouter } from 'next/navigation';
 import { Skeleton } from '@/components/ui/skeleton';
 import AdminObjectForm from '@/components/forms/objects/AdminObjectForm';
@@ -25,7 +26,7 @@ const typeLabels: Record<string, string> = {
   room: 'Комната',
 };
 
-export default function NewObjectPage() {
+function NewObjectContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const type = searchParams.get('type');
@@ -94,5 +95,13 @@ export default function NewObjectPage() {
         Назад
       </Button>
     </div>
+  );
+}
+
+export default function NewObjectPage() {
+  return (
+    <Suspense fallback={<Skeleton className="h-96 w-full" />}>
+      <NewObjectContent />
+    </Suspense>
   );
 }
