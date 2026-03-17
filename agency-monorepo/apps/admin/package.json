@@ -2,7 +2,11 @@
   "name": "agency-admin",
   "version": "0.1.0",
   "private": true,
+<<<<<<< HEAD
   "packageManager": "pnpm@8.15.4",
+=======
+  "packageManager": "pnpm@8.15.0",
+>>>>>>> eff30d1 (b)
   "scripts": {
     "dev": "next dev",
     "build": "next build",
