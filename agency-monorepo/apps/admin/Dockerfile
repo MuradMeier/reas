@@ -16,7 +16,12 @@ RUN pnpm install --frozen-lockfile
 
 # Этап сборки
 FROM base AS builder
+# Принимаем переменную из аргументов сборки
+ARG NEXT_PUBLIC_API_URL
+# Делаем её доступной во время сборки
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 WORKDIR /app
+# ... остальные инструкции без изменений
 
 # Копируем всё из deps (уже есть node_modules, packages, package.json для apps/admin)
 COPY --from=deps /app .
