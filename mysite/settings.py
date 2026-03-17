@@ -17,7 +17,11 @@ DEBUG = os.environ.get('DEBUG', 'False').lower() == 'true'
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '').split(',')
 
 # CSRF доверенные источники – для админки и форм
-CSRF_TRUSTED_ORIGINS = os.environ.get('CSRF_TRUSTED_ORIGINS', '').split(',')
+CSRF_TRUSTED_ORIGINS = [
+    'https://*.railway.app',
+    'http://localhost:3000',
+    'http://localhost:8000',
+]
 
 # -------------------- ПРИЛОЖЕНИЯ --------------------
 INSTALLED_APPS = [
