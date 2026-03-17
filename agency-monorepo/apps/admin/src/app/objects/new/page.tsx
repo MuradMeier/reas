@@ -9,6 +9,8 @@ import api from '@repo/api-client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
+export const dynamic = 'force-dynamic';
+
 const typeToComponent: Record<string, React.ComponentType<any>> = {
   flat: AdminObjectForm,
   detachedhouse: AdminObjectForm,
