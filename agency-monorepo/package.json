@@ -1,6 +1,7 @@
 {
   "name": "agency-monorepo",
   "version": "1.0.0",
+  "packageManager": "pnpm@8.15.0",
   "engines": {
     "node": ">=20.0.0"
   },
