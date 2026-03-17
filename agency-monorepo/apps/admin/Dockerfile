@@ -17,9 +17,16 @@ RUN pnpm install --frozen-lockfile
 # Этап сборки
 FROM base AS builder
 WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/packages ./packages
+
+# Копируем всё из deps (уже есть node_modules, packages, package.json для apps/admin)
+COPY --from=deps /app .
+
+# Копируем оставшиеся исходники (перезапишут файлы, но не затронут node_modules)
 COPY . .
+
+# Собираем админку
+WORKDIR /app/apps/admin
+RUN pnpm run build
 
 # Собираем админку
 WORKDIR /app/apps/admin
@@ -29,17 +36,17 @@ RUN pnpm run build
 FROM node:20-alpine AS runner
 WORKDIR /app
 
-# Копируем standalone (сервер и зависимости)
+# Копируем всё необходимое (как у вас и было)
 COPY --from=builder /app/apps/admin/.next/standalone ./
-
-# Копируем статические файлы из .next/static в правильное место
 COPY --from=builder /app/apps/admin/.next/static ./apps/admin/.next/static
-
-# Копируем public файлы
 COPY --from=builder /app/apps/admin/public ./apps/admin/public
 
 WORKDIR /app/apps/admin
 
-EXPOSE 3000
-ENV PORT 3000
-CMD ["node", "server.js"]
+# ВАЖНО: Не указываем PORT явно. Railway сам её подставит.
+# Но мы указываем, на каком интерфейсе слушать.
+ENV HOST=0.0.0.0
+EXPOSE ${PORT:-3000}
+
+# Команда запуска: берём порт из переменной окружения Railway.
+CMD ["sh", "-c", "PORT=$PORT node server.js"]

@@ -175,3 +175,5 @@ ADMIN_URL = os.environ.get('ADMIN_URL', 'http://localhost:3000')
 
 # -------------------- GDAL (для PostGIS) --------------------
 #GDAL_LIBRARY_PATH = '/usr/lib/libgdal.so'
+
+ROOT_URLCONF = 'mysite.urls'
