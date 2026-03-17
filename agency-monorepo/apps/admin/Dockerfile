@@ -25,14 +25,20 @@ COPY . .
 WORKDIR /app/apps/admin
 RUN pnpm run build
 
-# Финальный образ (для standalone режима)
+# Финальный образ
 FROM node:20-alpine AS runner
 WORKDIR /app
 
-# Копируем собранное standalone-приложение
+# Копируем standalone (сервер и зависимости)
 COPY --from=builder /app/apps/admin/.next/standalone ./
-COPY --from=builder /app/apps/admin/.next/static ./.next/static
-COPY --from=builder /app/apps/admin/public ./public
+
+# Копируем статические файлы из .next/static в правильное место
+COPY --from=builder /app/apps/admin/.next/static ./apps/admin/.next/static
+
+# Копируем public файлы
+COPY --from=builder /app/apps/admin/public ./apps/admin/public
+
+WORKDIR /app/apps/admin
 
 EXPOSE 3000
 ENV PORT 3000
