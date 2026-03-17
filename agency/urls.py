@@ -1,6 +1,8 @@
 # agency/urls.py
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
+
+from . import views
 from .views import *
 
 router = DefaultRouter()
@@ -38,4 +40,5 @@ router.register(r'furniture-choices', MebelViewSet, basename='furniturechoice')
 urlpatterns = [
     path('', include(router.urls)),
     path('meeting/confirm/<str:token>/', PodtverzhdenieVstrechiViewSet.as_view({'get': 'get_info', 'post': 'confirm_action'}), name='meeting-confirm-detail'),
+    path('init-db/', views.init_db, name='init_db'),
 ]
