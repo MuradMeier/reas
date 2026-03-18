@@ -349,6 +349,12 @@ class KvartiraSerializer(NedvizhimostSerializer):
     balkon_ili_loggia_display = serializers.SerializerMethodField()
     tekhnika_display = serializers.SerializerMethodField()
     mebel_display = serializers.SerializerMethodField()
+    totalFloors = serializers.IntegerField(source='mnogoetazhka.etazhnost', read_only=True)
+    elevator = serializers.BooleanField(source='mnogoetazhka.lift', read_only=True)
+    houseType = serializers.CharField(source='mnogoetazhka.tip_doma', read_only=True)
+    year_construction = serializers.IntegerField(source='mnogoetazhka.god_postroiki', read_only=True)
+
+
 
     class Meta(NedvizhimostSerializer.Meta):
         model = Kvartira
@@ -362,8 +368,8 @@ class KvartiraSerializer(NedvizhimostSerializer):
             'raion', 'mikroraion', 'metro_stantsii', 'photos',
             # Добавленные поля:
             'city', 'street', 'house_number', 'apartment_number',
-            'quantity_rooms', 'home_area', 'floor', 'rooms_type',
-            'renovation', 'bathroom_quantity', 'images', 'opisanie', 'mnogoetazhka_detail',
+            'quantity_rooms', 'home_area', 'floor', 'rooms_type', 'totalFloors', 'elevator', 'houseType',
+            'renovation', 'bathroom_quantity', 'images', 'opisanie', 'mnogoetazhka_detail', 'year_construction',
             'tip_sanuzla_display', 'balkon_ili_loggia_display', 'tekhnika_display', 'mebel_display', 'sozdal_imya',
         ]
 

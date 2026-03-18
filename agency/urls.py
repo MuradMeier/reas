@@ -41,4 +41,5 @@ urlpatterns = [
     path('', include(router.urls)),
     path('meeting/confirm/<str:token>/', PodtverzhdenieVstrechiViewSet.as_view({'get': 'get_info', 'post': 'confirm_action'}), name='meeting-confirm-detail'),
     path('init-db/', views.init_db, name='init_db'),
+    path('search-object/', search_object, name='search-object'),
 ]

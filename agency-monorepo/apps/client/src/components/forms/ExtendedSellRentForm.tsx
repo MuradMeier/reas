@@ -246,7 +246,6 @@ export default function ExtendedSellRentForm({
       sleepingPlaces: undefined,
     },
   });
-
   const { reset } = form;
 
   useEffect(() => {
@@ -258,24 +257,96 @@ export default function ExtendedSellRentForm({
   console.log('Form errors:', form.formState.errors);
 
   const [addressInput, setAddressInput] = useState('');
+  const fetchExistingObjectData = async (parts: AddressParts) => {
+  try {
+    const params = new URLSearchParams({
+      city: parts.city,
+      street: parts.street,
+      house_number: parts.house,
+      apartment: parts.apartment || '',
+    });
+    const response = await api.get(`/search-object/?${params.toString()}`);
+    const data = response.data;
+    if (data && data.object_type) {
+      // Заполняем общие поля
+      form.setValue('address', data.address || `${data.city}, ${data.street} ${data.house_number}`);
+      form.setValue('city', data.city || '');
+      form.setValue('street', data.street || '');
+      form.setValue('houseNumber', data.house_number || '');
+      if (data.apartment_number) form.setValue('apartmentNumber', data.apartment_number);
+
+      // Заполняем специфические поля в зависимости от типа
+      if (data.object_type === 'flat') {
+        form.setValue('kolichestvo_komnat', data.quantity_rooms);
+        form.setValue('floor', data.floor);
+        form.setValue('totalFloors', data.totalFloors);
+        form.setValue('houseType', data.houseType);
+        form.setValue('yearBuilt', data.year_construction);
+        form.setValue('elevator', data.elevator);
+        form.setValue('renovation', data.renovation);
+        form.setValue('tip_sanuzla', data.tip_sanuzla || []);
+        form.setValue('balkon_ili_loggia', data.balkon_ili_loggia || []);
+        form.setValue('tekhnika', data.tekhnika || []);
+        form.setValue('mebel', data.mebel || []);
+        form.setValue('area', data.home_area);
+      } else if (data.object_type === 'house') {
+        form.setValue('kolichestvo_komnat', data.quantity_rooms);
+        form.setValue('houseArea', data.home_area);
+        form.setValue('landArea', data.land_area);
+        form.setValue('floors', data.floor_in_house);
+        form.setValue('houseType', data.houseType);
+        form.setValue('yearBuilt', data.year_construction);
+        form.setValue('communications', data.communications || []);
+        form.setValue('tip_vody', data.tip_vody || []);
+        form.setValue('tip_kanalizatsii', data.tip_kanalizatsii || []);
+        form.setValue('mestopolozhenie_sanuzla', data.mestopolozhenie_sanuzla || []);
+        form.setValue('area', data.home_area);
+      } else if (data.object_type === 'land') {
+        form.setValue('landArea', data.land_area);
+        form.setValue('cadastralNumber', data.cadastral_number);
+        form.setValue('landType', data.land_type);
+        form.setValue('water', data.is_water);
+        form.setValue('gas', data.is_gas);
+        form.setValue('sewerage', data.is_severage);
+        form.setValue('area', data.land_area);
+      }
+    }
+  } catch (error) {
+    console.error('Error fetching object data:', error);
+  }
+};
   const [selectedAddress, setSelectedAddress] = useState<AddressParts | null>(null);
 
-    const handleAddressSelect = (fullAddress: string, data: any) => {
-  console.log('Selected address data:', data);
-  const regionCode = data.region_kladr_id?.substring(0, 2);
-  console.log('Region code:', regionCode);
-  console.log('Allowed codes:', settings?.allowed_region_codes);
-  if (regionCode && !settings?.allowed_region_codes.includes(regionCode)) {
-    toast.error('К сожалению, мы не работаем в данном регионе');
-    setAddressInput('');
-    setSelectedAddress(null);
-    setValue('exactAddress', '');
-    return;
-  }
-  setAddressInput(fullAddress);
-  setSelectedAddress(data);
-  form.setValue('address', fullAddress);
-};
+  const handleAddressSelect = (fullAddress: string, data: any) => {
+      console.log('Selected address data:', data);
+      const regionCode = data.region_kladr_id?.substring(0, 2);
+      console.log('Region code:', regionCode);
+      console.log('Allowed codes:', settings?.allowed_region_codes);
+      if (regionCode && !settings?.allowed_region_codes.includes(regionCode)) {
+        toast.error('К сожалению, мы не работаем в данном регионе');
+        setAddressInput('');
+        setSelectedAddress(null);
+        form.setValue('address', '');
+        return;
+      }
+      setAddressInput(fullAddress);
+      setSelectedAddress(data);
+      form.setValue('address', fullAddress);
+
+      // Разбираем адрес на части и заполняем скрытые поля
+      const parts = parseAddressData(data);
+      form.setValue('city', parts.city || '');
+      form.setValue('street', parts.street || '');
+      form.setValue('houseNumber', parts.house || '');
+      form.setValue('korpus', parts.korpus || '');
+      form.setValue('stroenie', parts.stroenie || '');
+      if (parts.apartment) {
+        form.setValue('apartmentNumber', parts.apartment);
+      }
+
+      // Отправляем запрос на поиск существующего объекта (без ожидания)
+      fetchExistingObjectData(parts);
+    };
 
   function parseAddressData(data: any): AddressParts & { regionName?: string; cityName?: string } {
     return {
@@ -393,45 +464,6 @@ export default function ExtendedSellRentForm({
                 )}
               />
             </div>
-
-            {/* Условные поля для номера квартиры/участка */}
-            {(objectType === 'Квартира' || objectType === 'Комната') && (
-              <FormField
-                control={form.control}
-                name="apartmentNumber"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Номер квартиры</FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="42"
-                        value={field.value ?? ''}
-                        onChange={(e) => field.onChange(e.target.value || undefined)}
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-            )}
-            {objectType === 'Участок' && (
-              <FormField
-                control={form.control}
-                name="plotNumber"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Номер участка</FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="12"
-                        value={field.value ?? ''}
-                        onChange={(e) => field.onChange(e.target.value || undefined)}
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-            )}
-
             <Separator className="my-4" />
 
             {/* Поля для квартиры/комнаты */}

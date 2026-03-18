@@ -18,6 +18,56 @@ from .utils import generate_description_with_gpt, geocode_address
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from rest_framework.permissions import AllowAny, IsAuthenticated
 
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def search_object(request):
+    city = request.GET.get('city')
+    street = request.GET.get('street')
+    house_number = request.GET.get('house_number')
+    apartment = request.GET.get('apartment')
+
+    # Поиск квартиры (если указана квартира)
+    if apartment:
+        flat = Kvartira.objects.filter(
+            mnogoetazhka__gorod_tekst__iexact=city,
+            mnogoetazhka__ulitsa__iexact=street,
+            mnogoetazhka__nomer_doma__iexact=house_number,
+            nomer_kvartiry__iexact=apartment,
+            opublikovano=True
+        ).first()
+        if flat:
+            serializer = KvartiraSerializer(flat, context={'request': request})
+            data = serializer.data
+            data['object_type'] = 'flat'
+            return Response(data)
+
+    # Поиск частного дома (без квартиры)
+    house = ChastnyiDom.objects.filter(
+        gorod_tekst__iexact=city,
+        ulitsa__iexact=street,
+        nomer_doma__iexact=house_number,
+        opublikovano=True
+    ).first()
+    if house:
+        serializer = ChastnyiDomSerializer(house, context={'request': request})
+        data = serializer.data
+        data['object_type'] = 'house'
+        return Response(data)
+
+    # Поиск участка (если передан house_number как номер участка)
+    land = ZemelnyiUchastok.objects.filter(
+        gorod_tekst__iexact=city,
+        ulitsa__iexact=street,
+        nomer_uchastka__iexact=house_number,
+        opublikovano=True
+    ).first()
+    if land:
+        serializer = ZemelnyiUchastokSerializer(land, context={'request': request})
+        data = serializer.data
+        data['object_type'] = 'land'
+        return Response(data)
+
+    return Response({'found': False})
 
 def init_db(request):
     # Проверка секретного токена
