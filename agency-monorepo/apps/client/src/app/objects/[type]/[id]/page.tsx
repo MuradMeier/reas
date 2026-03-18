@@ -7,11 +7,25 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { MapPin } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import SellRentForm from '@/components/forms/SellRentForm';
 import { ExtendedDataDisplay } from '@/components/forms/ExtendedDataDisplay'; // путь к вашему скопированному файлу
 import api from '@repo/api-client';
+
+const renovationMap: Record<string, string> = {
+  euro: 'Евро',
+  cosmetic: 'Косметический',
+  capital: 'Капитальный',
+  designer: 'Дизайнерский',
+};
+
+const houseTypeMap: Record<string, string> = {
+  brick: 'Кирпичный',
+  monolith: 'Монолитный',
+  panel: 'Панельный',
+  // при необходимости добавьте другие
+};
 
 const typeLabels: Record<string, string> = {
   flat: 'Квартира',
@@ -31,13 +45,34 @@ const getEndpoint = (type: string, id: string) => {
 // Поля, которые уже показаны в блоке "Характеристики" и не должны дублироваться
 const getExcludeFields = (type: string) => {
   const common = [
-    'mnogoetazhka', 'nomer_kvartiry', 'koordinaty',
-    'kolichestvo_komnat', 'zhilaya_ploshad', 'etazh',
-    'kolichestvo_sanuzlov', 'tip_komnat', 'sozdano', 'obnovleno',
-    'region', 'gorod', 'city', 'street', 'house_number', 'apartment_number',
-    'quantity_rooms', 'home_area', 'floor', 'rooms_type', 'bathroom_quantity',
-    'mnogoetazhka_detail'
-  ];
+  // Технические и служебные
+  'id', 'sozdano', 'obnovleno', 'sozdal_imya',
+  'predlozheniya_arendy', 'predlozheniya_prodazhi',
+  'obrazy', 'komnaty',
+
+  // Поля-связи (ID)
+  'region', 'gorod', 'raion', 'mikroraion', 'metro_stantsii',
+  'mnogoetazhka', 'mnogoetazhka_detail',
+
+  // Поля, уже отображённые в основных характеристиках
+  'kolichestvo_komnat', 'zhilaya_ploshad', 'etazh',
+  'kolichestvo_sanuzlov', 'tip_komnat', 'remont', 'renovation',
+  'quantity_rooms', 'home_area', 'floor', 'rooms_type',
+  'bathroom_quantity',
+  'totalFloors', 'elevator', 'floor_in_house', 'year_construction',
+  'land_area', 'cadastral_number', 'land_type', 'is_water', 'is_gas', 'is_severage',
+  'city', 'street', 'house_number', 'apartment_number',
+  'nomer_kvartiry', 'nomer_uchastka', 'kadastr_nomer', 'ploshad_uchastka',
+  'voda', 'kanalizatsiya', 'gaz', 'tip_uchastka',
+
+  // Поля с суффиксом _display (они не нужны, если мы показываем исходные)
+  'tip_sanuzla_display', 'balkon_ili_loggia_display',
+  'tekhnika_display', 'mebel_display',
+
+  // Поля, которые могут быть лишними в доп. характеристиках
+  'gorod_tekst', 'ulitsa', 'koordinaty',
+];
+
   if (type === 'flat') {
     return [...common, 'totalFloors', 'elevator'];
   }
@@ -68,7 +103,11 @@ export default function ObjectDetailPage() {
     },
     enabled: !!endpoint,
   });
-
+    useEffect(() => {
+  if (object) {
+    console.log('Все ключи объекта:', Object.keys(object));
+  }
+}, [object]);
   if (isLoading) {
     return (
       <div className="container mx-auto px-4 py-8">
@@ -135,7 +174,7 @@ export default function ObjectDetailPage() {
                     {object.floor && <div><strong>Этаж:</strong> {object.floor}</div>}
                     {object.totalFloors && <div><strong>Этажность дома:</strong> {object.totalFloors}</div>}
                     {object.rooms_type && <div><strong>Тип комнат:</strong> {object.rooms_type === 'separate' ? 'Раздельные' : 'Смежные'}</div>}
-                    {object.renovation && <div><strong>Ремонт:</strong> {object.renovation}</div>}
+                    {object.renovation && <div><strong>Ремонт:</strong> {renovationMap[object.renovation] || object.renovation}</div>}
                     {object.bathroom_quantity && <div><strong>Санузлов:</strong> {object.bathroom_quantity}</div>}
                   </>
                 )}

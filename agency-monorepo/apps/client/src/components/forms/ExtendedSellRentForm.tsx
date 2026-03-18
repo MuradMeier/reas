@@ -261,36 +261,21 @@ export default function ExtendedSellRentForm({
   const [selectedAddress, setSelectedAddress] = useState<AddressParts | null>(null);
 
     const handleAddressSelect = (fullAddress: string, data: any) => {
-    // Проверка региона
-    const regionCode = data.region_kladr_id?.substring(0, 2);
-    if (regionCode && !settings?.allowed_region_codes.includes(regionCode)) {
-      toast.error('К сожалению, мы не работаем в данном регионе');
-      setAddressInput('');
-      setSelectedAddress(null);
-      // Очищаем поля формы
-      form.setValue('city', '');
-      form.setValue('street', '');
-      form.setValue('houseNumber', '');
-      form.setValue('korpus', '');
-      form.setValue('stroenie', '');
-      form.setValue('apartmentNumber', '');
-      return;
-    }
-
-    setAddressInput(fullAddress);
-    const parts = parseAddressData(data);
-    setSelectedAddress(parts);
-
-    // Заполняем поля формы
-    form.setValue('city', parts.city || '');
-    form.setValue('street', parts.street || '');
-    form.setValue('houseNumber', parts.house || '');
-    form.setValue('korpus', parts.korpus || '');
-    form.setValue('stroenie', parts.stroenie || '');
-    if (parts.apartment) {
-      form.setValue('apartmentNumber', parts.apartment);
-    }
-  };
+  console.log('Selected address data:', data);
+  const regionCode = data.region_kladr_id?.substring(0, 2);
+  console.log('Region code:', regionCode);
+  console.log('Allowed codes:', settings?.allowed_region_codes);
+  if (regionCode && !settings?.allowed_region_codes.includes(regionCode)) {
+    toast.error('К сожалению, мы не работаем в данном регионе');
+    setAddressInput('');
+    setSelectedAddress(null);
+    setValue('exactAddress', '');
+    return;
+  }
+  setAddressInput(fullAddress);
+  setSelectedAddress(data);
+  form.setValue('address', fullAddress);
+};
 
   function parseAddressData(data: any): AddressParts & { regionName?: string; cityName?: string } {
     return {

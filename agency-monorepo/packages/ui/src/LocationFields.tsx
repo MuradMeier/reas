@@ -17,10 +17,11 @@ interface LocationFieldsProps {
   register: UseFormRegister<any>;
   watch: UseFormWatch<any>;
   setValue: UseFormSetValue<any>;
+  onAddressSelect?: (fullAddress: string, data: any) => void;
 }
 
 // Компонент для подсказок адреса
-const AddressSuggest = ({ value, onChange, onSelect }: { value: string; onChange: (val: string) => void; onSelect: (val: string) => void }) => {
+const AddressSuggest = ({ value, onChange, onSelect }: { value: string; onChange: (val: string) => void; onSelect: (fullAddress: string, data: any) => void; }) => {
   const [suggestions, setSuggestions] = useState<any[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -84,7 +85,7 @@ const AddressSuggest = ({ value, onChange, onSelect }: { value: string; onChange
               key={index}
               className="px-3 py-2 hover:bg-gray-100 cursor-pointer flex items-center gap-2"
               onClick={() => {
-                onSelect(suggestion.value);
+                onSelect(suggestion.value, suggestion.data);
                 setShowSuggestions(false);
               }}
             >
@@ -98,7 +99,7 @@ const AddressSuggest = ({ value, onChange, onSelect }: { value: string; onChange
   );
 };
 
-export function LocationFields({ register, watch, setValue }: LocationFieldsProps) {
+export function LocationFields({ register, watch, setValue, onAddressSelect }: LocationFieldsProps) {
   const [citySearch, setCitySearch] = useState('');
   const [districtSearch, setDistrictSearch] = useState('');
   const [microdistrictSearch, setMicrodistrictSearch] = useState('');
@@ -382,13 +383,19 @@ export function LocationFields({ register, watch, setValue }: LocationFieldsProp
       )}
 
       {/* Точный адрес с подсказками */}
-      <div className="space-y-2">
-        <Label>Точный адрес</Label>
-        <AddressSuggest
-          value={exactAddress}
-          onChange={(val) => setValue('exactAddress', val)}
-          onSelect={(val) => setValue('exactAddress', val)}
-        />
+        <div className="space-y-2">
+    <Label>Точный адрес</Label>
+    <AddressSuggest
+      value={exactAddress}
+      onChange={(val) => setValue('exactAddress', val)}
+      onSelect={(val, data) => {
+        if (onAddressSelect) {
+          onAddressSelect(val, data); // вызываем внешний обработчик, если передан
+        } else {
+          setValue('exactAddress', val); // поведение по умолчанию
+        }
+      }}
+    />
       </div>
 
       {exactAddress && (

@@ -9,18 +9,35 @@ import { Bed, Square, Calendar } from 'lucide-react';
 
 interface ObjectCardProps {
   item: SearchResult;
+  filterAction?: string;
+  filterObjectType?: string;
+  filterParams?: Record<string, any>; // добавили
 }
 
-export default function ObjectCard({ item }: ObjectCardProps) {
-    console.log('ObjectCard item:', JSON.stringify(item, null, 2));
+export default function ObjectCard({ item, filterAction, filterObjectType, filterParams }: ObjectCardProps) {
+  console.log('ObjectCard item:', JSON.stringify(item, null, 2));
   const formattedDate = item.created_at
     ? format(new Date(item.created_at), 'dd.MM.yyyy', { locale: ru })
     : null;
-      const imageUrl = item.image || (item as any).images?.[0]?.izobrazhenie;
+  const imageUrl = item.image || (item as any).images?.[0]?.izobrazhenie;
+
+  // Формируем ссылку с параметрами фильтров
+  const query = new URLSearchParams();
+  if (filterAction) query.set('action', filterAction);
+  if (filterObjectType) query.set('objectType', filterObjectType);
+  if (filterParams) {
+    Object.entries(filterParams).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        query.set(key, String(value));
+      }
+    });
+  }
+  const href = `/objects/${item.type}/${item.id}${query.toString() ? '?' + query.toString() : ''}`;
+
   return (
     <Card className="overflow-hidden group hover:shadow-xl transition-shadow duration-300">
       <div className="aspect-video relative bg-gray-100">
-                {imageUrl ? (
+        {imageUrl ? (
           <Image
             src={imageUrl}
             alt={item.title}
@@ -65,7 +82,7 @@ export default function ObjectCard({ item }: ObjectCardProps) {
         )}
       </CardContent>
       <CardFooter className="p-5 pt-0">
-        <Link href={`/objects/${item.type}/${item.id}`} passHref className="w-full">
+        <Link href={href} passHref className="w-full">
           <Button variant="outline" className="w-full border-blue-200 hover:bg-blue-50">
             Подробнее
           </Button>

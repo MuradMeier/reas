@@ -60,6 +60,7 @@ const fieldLabels = {
   tip_vody: 'Источники воды',
   tip_kanalizatsii: 'Типы канализации',
   mestopolozhenie_sanuzla: 'Расположение санузлов',
+  opisanie: 'Описание'
 };
 
 export const ExtendedDataDisplay = ({ data, propertyType, excludeKeys = [] }) => {
@@ -96,6 +97,14 @@ export const ExtendedDataDisplay = ({ data, propertyType, excludeKeys = [] }) =>
       return value.join(', ');
     }
     if (typeof value === 'boolean') return value ? 'Да' : 'Нет';
+        if (field === 'houseType') {
+      const houseTypeMap: Record<string, string> = {
+        brick: 'Кирпичный',
+        monolith: 'Монолитный',
+        panel: 'Панельный',
+      };
+      return houseTypeMap[value] || value;
+    }
     return String(value);
   };
 

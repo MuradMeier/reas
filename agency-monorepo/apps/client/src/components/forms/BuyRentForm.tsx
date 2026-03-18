@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect, useRef } from 'react';
+import { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { YMaps } from '@pbe/react-yandex-maps';
 import { Button } from '@/components/ui/button';
@@ -19,10 +19,16 @@ import { ObjectCard, LocationFields } from '@repo/ui';
 interface BuyRentFormProps {
   action: string;
   objectType: string;
+  initialValues?: any;
+  onSearch?: (values: any) => void;
 }
 
-export default function BuyRentForm({ action, objectType }: BuyRentFormProps) {
-  const { register, watch, setValue, getValues } = useForm({
+export default function BuyRentForm({ action, objectType, initialValues, onSearch }: BuyRentFormProps) {
+  console.log('ObjectCard:', ObjectCard);
+  console.log('LocationFields:', LocationFields);
+  console.log('AddressSuggest:', AddressSuggest);
+
+  const { register, watch, setValue, getValues, reset } = useForm({
     defaultValues: {
       region: '',
       city: '',
@@ -55,6 +61,12 @@ export default function BuyRentForm({ action, objectType }: BuyRentFormProps) {
     },
   });
 
+  useEffect(() => {
+    if (initialValues) {
+      reset(initialValues);
+    }
+  }, [initialValues, reset]);
+
   const [results, setResults] = useState<SearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [addressInput, setAddressInput] = useState('');
@@ -83,8 +95,10 @@ export default function BuyRentForm({ action, objectType }: BuyRentFormProps) {
   };
 
   const handleAddressSelect = (fullAddress: string, data: any) => {
-    // Проверка региона
+    console.log('Selected address data:', data);
     const regionCode = data.region_kladr_id?.substring(0, 2);
+    console.log('Region code:', regionCode);
+    console.log('Allowed codes:', settings?.allowed_region_codes);
     if (regionCode && !settings?.allowed_region_codes.includes(regionCode)) {
       toast.error('К сожалению, мы не работаем в данном регионе');
       setAddressInput('');
@@ -97,7 +111,7 @@ export default function BuyRentForm({ action, objectType }: BuyRentFormProps) {
     setValue('exactAddress', fullAddress);
   };
 
-  const handleSearch = async () => {
+  const handleSearch = useCallback(async () => {
     const values = getValues();
     setIsSearching(true);
     const params = new URLSearchParams();
@@ -132,18 +146,34 @@ export default function BuyRentForm({ action, objectType }: BuyRentFormProps) {
     try {
       let results: SearchResult[] = [];
       if (objectType === 'Квартира' || objectType === 'Комната') {
-        const res = await api.get(`/flats/?${params.toString()}`);
-        results = (res.data.results || res.data || []).map((item: any) => ({
-          id: item.id,
-          type: 'flat',
-          title: `Квартира ${item.quantity_rooms}-комнатная`,
-          price: action === 'Купить' ? item.predlozheniya_prodazhi?.[0]?.tsena : item.predlozheniya_arendy?.[0]?.tsena,
-          area: item.home_area,
-          rooms: item.quantity_rooms,
-          address: `${item.city}, ${item.street} ${item.house_number}`,
-          image: item.images?.[0]?.izobrazhenie,
-        }));
-      } else if (objectType === 'Дом') {
+  let endpoint, resultMapper;
+  if (objectType === 'Квартира') {
+    endpoint = '/flats/';
+    resultMapper = (item: any) => ({
+      id: item.id,
+      type: 'flat',
+      title: `Квартира ${item.quantity_rooms}-комнатная`,
+      price: action === 'Купить' ? item.predlozheniya_prodazhi?.[0]?.tsena : item.predlozheniya_arendy?.[0]?.tsena,
+      area: item.home_area,
+      rooms: item.quantity_rooms,
+      address: `${item.city}, ${item.street} ${item.house_number}`,
+      image: item.images?.[0]?.izobrazhenie,
+    });
+  } else {
+    endpoint = '/rooms/';
+    resultMapper = (item: any) => ({
+      id: item.id,
+      type: 'room',
+      title: `Комната ${item.ploshad_komnaty || item.area} м²`,
+      price: action === 'Купить' ? item.predlozheniya_prodazhi?.[0]?.tsena : item.predlozheniya_arendy?.[0]?.tsena,
+      area: item.ploshad_komnaty || item.area,
+      address: `${item.city}, ${item.street} ${item.house_number}`,
+      image: item.images?.[0]?.izobrazhenie,
+    });
+  }
+  const res = await api.get(`${endpoint}?${params.toString()}`);
+  results = (res.data.results || res.data || []).map(resultMapper);
+} else if (objectType === 'Дом') {
         const res = await api.get(`/detachedhouses/?${params.toString()}`);
         results = (res.data.results || res.data || []).map((item: any) => ({
           id: item.id,
@@ -169,6 +199,10 @@ export default function BuyRentForm({ action, objectType }: BuyRentFormProps) {
       }
       if (isMounted.current) {
         setResults(results);
+        // Обновляем URL после успешного поиска
+        if (onSearch) {
+          onSearch(getValues());
+        }
       }
     } catch (error) {
       if (isMounted.current) {
@@ -179,7 +213,19 @@ export default function BuyRentForm({ action, objectType }: BuyRentFormProps) {
         setIsSearching(false);
       }
     }
-  };
+  }, [action, objectType, getValues, isMounted, onSearch]);
+
+  // Автоматический поиск при загрузке страницы, если есть параметры в URL
+  useEffect(() => {
+    if (initialValues) {
+      const hasAnyValue = Object.values(initialValues).some(v =>
+        v !== '' && v !== false && v !== undefined && v !== null
+      );
+      if (hasAnyValue) {
+        handleSearch();
+      }
+    }
+  }, [initialValues, handleSearch]);
 
   if (!settings) {
     return <Skeleton className="h-96 w-full" />;
@@ -188,19 +234,7 @@ export default function BuyRentForm({ action, objectType }: BuyRentFormProps) {
   return (
     <YMaps query={{ apikey: process.env.NEXT_PUBLIC_YANDEX_API_KEY || '' }}>
       <div className="space-y-8 relative pb-20">
-        <LocationFields register={register} watch={watch} setValue={setValue} />
-
-        {/* Поле точного адреса с проверкой региона */}
-        <div className="space-y-2">
-          <Label>Точный адрес</Label>
-          <AddressSuggest
-            value={addressInput}
-            onChange={setAddressInput}
-            onSelect={handleAddressSelect}
-            placeholder="Начните вводить адрес..."
-          />
-          <p className="text-xs text-muted-foreground">Выберите адрес из подсказок – мы проверим, работаем ли в этом регионе</p>
-        </div>
+        <LocationFields register={register} watch={watch} setValue={setValue} onAddressSelect={handleAddressSelect} />
 
         {/* Блок "Параметры объекта" */}
         <div className="space-y-4 border p-4 rounded-lg">
@@ -378,7 +412,42 @@ export default function BuyRentForm({ action, objectType }: BuyRentFormProps) {
         {results.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-8">
             {results.map((item) => (
-              <ObjectCard key={item.id} item={item} />
+              <ObjectCard
+                key={item.id}
+                item={item}
+                filterAction={action}
+                filterObjectType={objectType}
+                filterParams={{
+                  region: getValues('region'),
+                  city: getValues('city'),
+                  cityRadius: getValues('cityRadius'),
+                  district: getValues('district'),
+                  microdistrict: getValues('microdistrict'),
+                  metro: getValues('metro'),
+                  exactAddress: getValues('exactAddress'),
+                  addressRadius: getValues('addressRadius'),
+                  priceFrom: getValues('priceFrom'),
+                  priceTo: getValues('priceTo'),
+                  areaFrom: getValues('areaFrom'),
+                  areaTo: getValues('areaTo'),
+                  rooms: getValues('rooms'),
+                  floorNotFirst: getValues('floorNotFirst'),
+                  floorNotLast: getValues('floorNotLast'),
+                  renovation: getValues('renovation'),
+                  withChildren: getValues('withChildren'),
+                  withPets: getValues('withPets'),
+                  smoking: getValues('smoking'),
+                  sleepingPlaces: getValues('sleepingPlaces'),
+                  houseType: getValues('houseType'),
+                  yearBuiltFrom: getValues('yearBuiltFrom'),
+                  landAreaFrom: getValues('landAreaFrom'),
+                  landAreaTo: getValues('landAreaTo'),
+                  water: getValues('water'),
+                  gas: getValues('gas'),
+                  sewerage: getValues('sewerage'),
+                  landType: getValues('landType'),
+                }}
+              />
             ))}
           </div>
         )}

@@ -1,19 +1,83 @@
-// apps/site/app/page.tsx
+// apps/client/src/app/page.tsx
 'use client';
 
-import { useState } from 'react';
+import { Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import Header from '@/components/layout/Header';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import SellRentForm from '@/components/forms/SellRentForm';
 import BuyRentForm from '@/components/forms/BuyRentForm';
-import { Building2, Home, MapPin, Search } from 'lucide-react';
+import { Building2, Home, Search } from 'lucide-react';
 
 const actionOptions = ['Продать', 'Сдать', 'Купить', 'Снять'];
 const objectOptions = ['Комната', 'Квартира', 'Дом', 'Участок'];
 
-export default function HomePage() {
-  const [action, setAction] = useState('');
-  const [objectType, setObjectType] = useState('');
+function HomeContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
+  const initialFilterValues = useMemo(() => ({
+    region: searchParams.get('region') || '',
+    city: searchParams.get('city') || '',
+    cityRadius: searchParams.get('cityRadius') || '',
+    district: searchParams.get('district') || '',
+    microdistrict: searchParams.get('microdistrict') || '',
+    metro: searchParams.get('metro') || '',
+    exactAddress: searchParams.get('exactAddress') || '',
+    addressRadius: searchParams.get('addressRadius') || '',
+    priceFrom: searchParams.get('priceFrom') || '',
+    priceTo: searchParams.get('priceTo') || '',
+    areaFrom: searchParams.get('areaFrom') || '',
+    areaTo: searchParams.get('areaTo') || '',
+    rooms: searchParams.get('rooms') || '',
+    floorNotFirst: searchParams.get('floorNotFirst') === 'true',
+    floorNotLast: searchParams.get('floorNotLast') === 'true',
+    renovation: searchParams.get('renovation') || '',
+    withChildren: searchParams.get('withChildren') === 'true',
+    withPets: searchParams.get('withPets') === 'true',
+    smoking: searchParams.get('smoking') === 'true',
+    sleepingPlaces: searchParams.get('sleepingPlaces') || '',
+    houseType: searchParams.get('houseType') || '',
+    yearBuiltFrom: searchParams.get('yearBuiltFrom') || '',
+    landAreaFrom: searchParams.get('landAreaFrom') || '',
+    landAreaTo: searchParams.get('landAreaTo') || '',
+    water: searchParams.get('water') === 'true',
+    gas: searchParams.get('gas') === 'true',
+    sewerage: searchParams.get('sewerage') === 'true',
+    landType: searchParams.get('landType') || '',
+  }), [searchParams]);
+
+  const [action, setAction] = useState(searchParams.get('action') || '');
+  const [objectType, setObjectType] = useState(searchParams.get('objectType') || '');
+
+  // Обновление URL при изменении action/objectType
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (action) params.set('action', action);
+    else params.delete('action');
+    if (objectType) params.set('objectType', objectType);
+    else params.delete('objectType');
+    router.replace(`?${params.toString()}`, { scroll: false });
+  }, [action, objectType, searchParams, router]);
+
+  // Функция для обновления URL всеми параметрами формы при нажатии «Найти»
+  const onSearchParamsChange = useCallback((values: any) => {
+    const params = new URLSearchParams(searchParams.toString());
+    Object.entries(values).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        params.set(key, String(value));
+      } else {
+        params.delete(key);
+      }
+    });
+    // action и objectType тоже должны остаться
+    if (action) params.set('action', action);
+    else params.delete('action');
+    if (objectType) params.set('objectType', objectType);
+    else params.delete('objectType');
+    router.replace(`?${params.toString()}`, { scroll: false });
+  }, [searchParams, action, objectType, router]);
 
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-blue-50 to-white">
@@ -61,7 +125,12 @@ export default function HomePage() {
               {action === 'Продать' || action === 'Сдать' ? (
                 <SellRentForm action={action} objectType={objectType} />
               ) : (
-                <BuyRentForm action={action} objectType={objectType} />
+                <BuyRentForm
+                  action={action}
+                  objectType={objectType}
+                  initialValues={initialFilterValues}
+                  onSearch={onSearchParamsChange}
+                />
               )}
             </div>
           )}
@@ -93,5 +162,13 @@ export default function HomePage() {
         </div>
       </main>
     </div>
+  );
+}
+
+export default function HomePage() {
+  return (
+    <Suspense fallback={<div>Загрузка...</div>}>
+      <HomeContent />
+    </Suspense>
   );
 }

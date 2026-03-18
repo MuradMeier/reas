@@ -769,6 +769,13 @@ class KomnataViewSet(MyagkoeUdalenieModelViewSet):
             qs = qs.filter(tip_obekta=ContentType.objects.get_for_model(ChastnyiDom), id_obekta=dom_id)
         return qs
 
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve']:
+            permission_classes = [IsAuthenticatedOrReadOnly]
+        else:
+            permission_classes = [IsAuthenticated, IsRealtor]
+        return [permission() for permission in permission_classes]
+
 
 class RegionSettingsViewSet(viewsets.ModelViewSet):
     queryset = RegionSettings.objects.all()

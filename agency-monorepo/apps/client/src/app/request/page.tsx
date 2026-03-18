@@ -1,9 +1,12 @@
 'use client';
 
+import { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import SellRentForm from '@/components/forms/SellRentForm';
 
-export default function RequestPage() {
+export const dynamic = 'force-dynamic';
+
+function RequestContent() {
   const searchParams = useSearchParams();
   const type = searchParams.get('type');
   const id = searchParams.get('id');
@@ -24,5 +27,13 @@ export default function RequestPage() {
       <SellRentForm action="Купить" objectType={objectType} />
       {/* ID объекта можно передать через контекст или скрытое поле; пока не реализовано */}
     </div>
+  );
+}
+
+export default function RequestPage() {
+  return (
+    <Suspense fallback={<div>Загрузка...</div>}>
+      <RequestContent />
+    </Suspense>
   );
 }
