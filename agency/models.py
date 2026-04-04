@@ -674,13 +674,24 @@ class UvedomlenieKlienta(models.Model):
 # ----------------------------------------------------------------------
 # Микрорайон (добавлено)
 # ----------------------------------------------------------------------
+# models.py
 class Mikroraion(models.Model):
     nazvanie = models.CharField(max_length=100, verbose_name='Название')
-    raion = models.ForeignKey(Raion, on_delete=models.CASCADE, related_name='mikroraiony', verbose_name='Район')
+    raion = models.ForeignKey(
+        'Raion',
+        on_delete=models.CASCADE,
+        related_name='mikroraiony',
+        verbose_name='Район',
+        null=True,          # <-- добавить
+        blank=True          # <-- добавить
+    )
     class Meta:
-        unique_together = ('nazvanie', 'raion')
+        unique_together = ('nazvanie', 'raion')  # Обратите внимание: теперь raion может быть null,
+                                                 # но уникальность будет работать (в PostgreSQL NULL считается уникальным)
         verbose_name = 'Микрорайон'
         verbose_name_plural = 'Микрорайоны'
         ordering = ['nazvanie']
     def __str__(self):
-        return f"{self.nazvanie} ({self.raion.nazvanie})"
+        if self.raion:
+            return f"{self.nazvanie} ({self.raion.nazvanie})"
+        return self.nazvanie

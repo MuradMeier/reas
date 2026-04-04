@@ -13,6 +13,7 @@ import ExtendedSellRentForm from './ExtendedSellRentForm';
 import toast from 'react-hot-toast';
 import {Checkbox} from '@/components/ui/checkbox';
 import Link from 'next/link';
+import api from '@repo/api-client';
 
 
 const baseSchema = z.object({
@@ -32,7 +33,6 @@ interface SellRentFormProps {
   objectId?: string; // ID объекта (из URL)
 }
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api/v1';
 
 const mapPurpose = (action: string): string => {
   const map: Record<string, string> = {
@@ -80,11 +80,7 @@ export default function SellRentForm({ action, objectType, objectId}: SellRentFo
       object_id: objectId,
       object_type: mapPropertyType(objectType),
     };
-          const response = await fetch(`${API_URL}/requests/`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'omit',
-      body: JSON.stringify({
+          const response = await api.post('/requests/', {
         imya: baseData?.name,
         telefon: baseData?.phone,
         email: baseData?.email,                     // добавлено
@@ -93,16 +89,10 @@ export default function SellRentForm({ action, objectType, objectId}: SellRentFo
         status: 'new',
         extended_data: extendedData,
         agreed_to_pd: true,
-      }),
-});
-
-      if (!response.ok) throw new Error('Ошибка отправки');
+      });
       toast.success('Заявка отправлена');
-      setShowDialog(false);
-      form.reset();
     } catch (error) {
       toast.error('Ошибка при отправке');
-      console.error(error);
     }
   };
 
@@ -118,11 +108,7 @@ export default function SellRentForm({ action, objectType, objectId}: SellRentFo
       object_type: mapPropertyType(objectType),
       ...data,
     };
-          const response = await fetch(`${API_URL}/requests/`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'omit',
-      body: JSON.stringify({
+          const response = await api.post('/requests/', {
         imya: baseData?.name,
         telefon: baseData?.phone,
         email: baseData?.email,
@@ -131,15 +117,10 @@ export default function SellRentForm({ action, objectType, objectId}: SellRentFo
         status: 'new',
         extended_data: extendedData,
         agreed_to_pd: true,                          // добавлено
-      }),
-    });
-      if (!response.ok) throw new Error('Ошибка отправки');
+      });
       toast.success('Заявка отправлена');
-      setShowExtended(false);
-      form.reset();
     } catch (error) {
       toast.error('Ошибка при отправке');
-      console.error(error);
     }
   };
 
