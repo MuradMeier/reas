@@ -1369,6 +1369,7 @@ def mikroraion_autocomplete(request):
     return Response(data)
 
 @api_view(['GET'])
+@permission_classes([AllowAny])
 def get_or_create_city(request):
     region_id = request.GET.get('region_id')
     name = request.GET.get('name')
