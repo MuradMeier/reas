@@ -1367,3 +1367,21 @@ def mikroraion_autocomplete(request):
     qs = qs.order_by('nazvanie')[:20]
     data = [{'id': m.id, 'name': m.nazvanie} for m in qs]
     return Response(data)
+
+@api_view(['GET'])
+def get_or_create_city(request):
+    region_id = request.GET.get('region_id')
+    name = request.GET.get('name')
+    if not region_id or not name:
+        return Response({'error': 'region_id and name required'}, status=400)
+    try:
+        region = Region.objects.get(id=region_id)
+    except Region.DoesNotExist:
+        return Response({'error': 'Region not found'}, status=404)
+
+    city, created = Gorod.objects.get_or_create(
+        nazvanie=name,
+        region=region,
+        defaults={'est_metro': False}
+    )
+    return Response({'id': city.id, 'created': created})

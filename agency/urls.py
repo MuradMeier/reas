@@ -44,4 +44,5 @@ urlpatterns = [
     path('search-object/', search_object, name='search-object'),
     path('api/district-autocomplete/', district_autocomplete, name='district-autocomplete'),
     path('api/mikroraion-autocomplete/', mikroraion_autocomplete, name='mikroraion-autocomplete'),
+    path('cities/get_or_create/', get_or_create_city, name='get_or_create_city'),
 ]
