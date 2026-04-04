@@ -317,21 +317,30 @@ export function LocationFields({ register, watch, setValue, onAddressSelect }: L
                     key={idx}
                     value={c.nazvanie}
                     onSelect={async () => {
-    // 1. Сначала получаем ID города
-    try {
-        const response = await api.get('/cities/get_or_create/', {
+        try {
+          const response = await api.get('/cities/get_or_create/', {
             params: { region_id: region, name: c.nazvanie }
-        });
-        const cityId = response.data.id;
-        setValue('city', cityId);
-        setCityId(cityId);
-        setCityOpen(false);
-        setCitySearch('');
-    } catch (error) {
-        console.error('Failed to get/create city', error);
-    }
-}}
-                  >
+          });
+          const cityId = response.data.id;
+          setValue('city', cityId);
+          setCityId(cityId);
+          // Добавляем установку типа города
+          setCityType(c.type);
+          setIsCity(c.type === 'город' || c.type === 'пгт');
+          setCityOpen(false);
+          setCitySearch('');
+        } catch (error) {
+          console.error('Failed to get/create city', error);
+          // fallback: сохраняем название как строку
+          setValue('city', c.nazvanie);
+          setCityId(c.nazvanie);
+          setCityType(c.type);
+          setIsCity(c.type === 'город' || c.type === 'пгт');
+          setCityOpen(false);
+          setCitySearch('');
+        }
+      }}
+    >
                     <Check className={cn('mr-2 h-4 w-4', cityId === c.nazvanie ? 'opacity-100' : 'opacity-0')} />
                     {c.nazvanie}
                   </CommandItem>
@@ -349,7 +358,7 @@ export function LocationFields({ register, watch, setValue, onAddressSelect }: L
         </div>
       )}
 
-      {isCity && (cityId || districtSearch) && (
+     {cityId && districts.length > 0 && (
         <div className="space-y-2">
           <Label>Район</Label>
           <Popover open={districtOpen} onOpenChange={setDistrictOpen}>
@@ -386,7 +395,7 @@ export function LocationFields({ register, watch, setValue, onAddressSelect }: L
         </div>
       )}
 
-      {isCity && (districtId || microdistrictSearch) && (
+      {isCity && microdistricts.length > 0 && (
         <div className="space-y-2">
           <Label>Микрорайон</Label>
           <Popover open={microdistrictOpen} onOpenChange={setMicrodistrictOpen}>
@@ -423,7 +432,7 @@ export function LocationFields({ register, watch, setValue, onAddressSelect }: L
         </div>
       )}
 
-      {isCity && (cityId || metroSearch) && (
+      {cityId && metroStations.length > 0 && (
         <div className="space-y-2">
           <Label>Метро</Label>
           <Popover open={metroOpen} onOpenChange={setMetroOpen}>

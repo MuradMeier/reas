@@ -1,6 +1,8 @@
 # views.py (полностью переименован на русские термины в транслите)
 import os
 from datetime import timedelta
+
+from django.contrib.gis.measure import D
 from django.db.models.aggregates import Count
 from django.db.models.query_utils import Q
 from django.http.response import HttpResponse
@@ -449,6 +451,25 @@ class NedvizhimostViewSet(MyagkoeUdalenieModelViewSet):
         rooms = self.request.query_params.get('rooms')
         if rooms and rooms != 'any':
             queryset = queryset.filter(kolichestvo_komnat=rooms)
+
+        # ---- Фильтр по точному адресу и радиусу ----
+        exact_address = self.request.query_params.get('exact_address')
+        address_radius = self.request.query_params.get('address_radius')
+        if exact_address:
+            # Геокодируем адрес в координаты
+            coords = geocode_address(exact_address)
+            if coords:
+                # Радиус по умолчанию 1 км, если не передан
+                radius_km = float(address_radius) if address_radius else 1.0
+                user_location = Point(coords['lon'], coords['lat'], srid=4326)
+                # Фильтруем объекты, у которых есть координаты и они находятся в радиусе
+                queryset = queryset.filter(
+                    koordinaty__isnull=False,
+                    koordinaty__dwithin=(user_location, D(km=radius_km))
+                )
+            else:
+                # Если адрес не распознан, возвращаем пустой результат
+                queryset = queryset.none()
 
         return queryset
 
