@@ -73,7 +73,7 @@ class FotoSerializer(serializers.ModelSerializer):
 class RegionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Region
-        fields = ('id', 'nazvanie', 'poryadok')
+        fields = ('id', 'nazvanie', 'poryadok', 'kladr_id')
 
 
 class GorodSerializer(serializers.ModelSerializer):
