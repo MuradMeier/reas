@@ -168,14 +168,57 @@ def init_db(request):
         "Чукотский автономный округ", "Ямало-Ненецкий автономный округ"
     ]
 
-    for idx, region_name in enumerate(REGIONS_LIST, start=1):
-        Region.objects.get_or_create(
-            nazvanie=region_name,
-            defaults={'poryadok': idx}
-        )
+    def fetch_region_codes(region_name):
+        """Получает kladr_id и fias_id для региона через DaData"""
+        api_key = os.environ.get('DADATA_API_KEY')
+        if not api_key:
+            return None, None
+        try:
+            import requests
+            response = requests.post(
+                'https://suggestions.dadata.ru/suggestions/api/4_1/rs/suggest/address',
+                headers={
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'Authorization': f'Token {api_key}'
+                },
+                json={
+                    'query': region_name,
+                    'count': 1,
+                    'from_bound': {'value': 'region'},
+                    'to_bound': {'value': 'region'}
+                },
+                timeout=5
+            )
+            data = response.json()
+            if data['suggestions']:
+                suggestion = data['suggestions'][0]['data']
+                kladr_id = suggestion.get('region_kladr_id')
+                fias_id = suggestion.get('region_fias_id')
+                if kladr_id and len(kladr_id) >= 2:
+                    kladr_id = kladr_id[:2]  # берём первые два символа
+                return kladr_id, fias_id
+        except Exception as e:
+            print(f"Ошибка получения кодов для {region_name}: {e}")
+        return None, None
 
-    # 6. Сбросить настройки региона (синглтон)
-    RegionSettings.get_settings()
+    for idx, region_name in enumerate(REGIONS_LIST, start=1):
+        # Пытаемся получить коды из DaData
+        kladr_id, fias_id = fetch_region_codes(region_name)
+        region, created = Region.objects.get_or_create(
+            nazvanie=region_name,
+            defaults={
+                'poryadok': idx,
+                'kladr_id': kladr_id,
+                'fias_id': fias_id
+            }
+        )
+        if not created:
+            # Если регион уже существует, но коды пустые — обновим
+            if not region.kladr_id and kladr_id:
+                region.kladr_id = kladr_id
+                region.fias_id = fias_id
+                region.save(update_fields=['kladr_id', 'fias_id'])
 
     return HttpResponse("База данных очищена. Созданы все регионы РФ и справочники. Города, районы, микрорайоны и метро не добавлены – они будут создаваться через DaData при добавлении объектов.")
 

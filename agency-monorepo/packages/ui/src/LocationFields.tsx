@@ -101,7 +101,10 @@ const AddressSuggest = ({ value, onChange, onSelect }: { value: string; onChange
 
 export function LocationFields({ register, watch, setValue, onAddressSelect }: LocationFieldsProps) {
   const [citySearch, setCitySearch] = useState('');
+  const [cityId, setCityId] = useState<string | null>(null);
   const [districtSearch, setDistrictSearch] = useState('');
+  const [regionSearch, setRegionSearch] = useState('');
+  const [regionOpen, setRegionOpen] = useState(false);
   const [microdistrictSearch, setMicrodistrictSearch] = useState('');
   const [metroSearch, setMetroSearch] = useState('');
   const [cityOpen, setCityOpen] = useState(false);
@@ -110,7 +113,10 @@ export function LocationFields({ register, watch, setValue, onAddressSelect }: L
   const [metroOpen, setMetroOpen] = useState(false);
 
   const region = watch('region');
-  const cityId = watch('city');
+  useEffect(() => {
+  const currentCity = watch('city');
+  if (currentCity) setCityId(currentCity);
+}, [watch('city')]);
   const districtId = watch('district');
   const microdistrictId = watch('microdistrict');
   const metroId = watch('metro');
@@ -122,27 +128,76 @@ export function LocationFields({ register, watch, setValue, onAddressSelect }: L
   const debouncedMetroSearch = useDebounce(metroSearch, 300);
 
   // Запрос регионов
-  const { data: regions = [] } = useQuery({
-    queryKey: ['regions'],
-    queryFn: async () => {
-      const res = await api.get('/regions/');
-      return res.data.results || res.data || [];
-    },
-  });
-
+  const { data: regions = [], isLoading: regionsLoading } = useQuery({
+      queryKey: ['regions'],
+      queryFn: async () => {
+        const res = await api.get('/regions/');
+        return res.data.results || res.data || [];
+      },
+    });
   // Запрос городов
-  const { data: cities = [], isLoading: citiesLoading } = useQuery({
-    queryKey: ['cities', region, debouncedCitySearch],
-    queryFn: async () => {
-      if (!region && !debouncedCitySearch) return [];
-      const params = new URLSearchParams();
-      if (region) params.append('region', region);
-      if (debouncedCitySearch) params.append('search', debouncedCitySearch);
-      const res = await api.get(`/cities/?${params.toString()}`);
-      return res.data.results || res.data || [];
-    },
-    enabled: !!(region || debouncedCitySearch),
-  });
+  const [citySuggestions, setCitySuggestions] = useState<any[]>([]);
+const [isCityLoading, setIsCityLoading] = useState(false);
+
+// Эффект для поиска городов через DaData при изменении citySearch или region
+useEffect(() => {
+  const fetchCities = async () => {
+    if (!citySearch || citySearch.length < 2) {
+      setCitySuggestions([]);
+      return;
+    }
+
+    // Получаем название региона по ID
+    let regionName = '';
+    if (region) {
+      const selectedRegion = regions.find((r: Region) => String(r.id) === region);
+      regionName = selectedRegion?.nazvanie || '';
+    }
+
+    setIsCityLoading(true);
+    try {
+      const apiKey = process.env.NEXT_PUBLIC_DADATA_API_KEY;
+      if (!apiKey) throw new Error('No DaData key');
+
+      const requestBody: any = {
+        query: citySearch,
+        count: 10,
+        from_bound: { value: 'city' },
+        to_bound: { value: 'city' },
+      };
+      // Добавляем фильтр по региону, если выбран
+      if (regionName) {
+        requestBody.locations = [{ region: regionName }];
+      }
+
+      const response = await fetch('https://suggestions.dadata.ru/suggestions/api/4_1/rs/suggest/address', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Authorization': `Token ${apiKey}`,
+        },
+        body: JSON.stringify(requestBody),
+      });
+      const data = await response.json();
+      // Преобразуем в формат, похожий на наш City
+      const suggestions = (data.suggestions || []).map((s: any) => ({
+        id: null, // у DaData нет нашего ID
+        nazvanie: s.data.city || s.value.split(',')[0],
+        // можно сохранить и другие данные
+      }));
+      setCitySuggestions(suggestions);
+    } catch (error) {
+      console.error('DaData error', error);
+      setCitySuggestions([]);
+    } finally {
+      setIsCityLoading(false);
+    }
+  };
+
+  const debounceTimer = setTimeout(fetchCities, 300);
+  return () => clearTimeout(debounceTimer);
+}, [citySearch, region, regions])
 
   // Запрос районов
   const { data: districts = [], isLoading: districtsLoading } = useQuery({
@@ -208,58 +263,88 @@ export function LocationFields({ register, watch, setValue, onAddressSelect }: L
     <div className="space-y-4 border p-4 rounded-lg">
       <h3 className="text-lg font-medium">Где ищем?</h3>
 
-      {/* Регион */}
+      {/* Регион с поиском */}
       <div className="space-y-2">
         <Label>Область/регион</Label>
-        <Select onValueChange={(value) => setValue('region', value)} value={region}>
-          <SelectTrigger>
-            <SelectValue placeholder="Выберите регион" />
-          </SelectTrigger>
-          <SelectContent>
-            {regions.map((r: Region) => (
-              <SelectItem key={r.id} value={String(r.id)}>
-                {r.nazvanie}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* Город */}
-      <div className="space-y-2">
-        <Label>Город</Label>
-        <Popover open={cityOpen} onOpenChange={setCityOpen}>
-          <PopoverTrigger asChild>
-            <Button variant="outline" role="combobox" aria-expanded={cityOpen} className="w-full justify-between">
-              {cityId ? cities.find((c: City) => String(c.id) === cityId)?.nazvanie : 'Введите или выберите город...'}
-              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-full p-0">
-            <Command shouldFilter={false}>
-              <CommandInput placeholder="Поиск города..." value={citySearch} onValueChange={setCitySearch} />
-              {citiesLoading && <CommandEmpty>Загрузка...</CommandEmpty>}
-              {!citiesLoading && cities.length === 0 && <CommandEmpty>Города не найдены</CommandEmpty>}
-              <CommandGroup>
-                {cities.map((c: City) => (
+        <Popover open={regionOpen} onOpenChange={setRegionOpen}>
+        <PopoverTrigger asChild>
+          <Button variant="outline" role="combobox" aria-expanded={regionOpen} className="w-full justify-between">
+            {region ? regions.find((r: Region) => String(r.id) === region)?.nazvanie : 'Введите или выберите регион...'}
+            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-full p-0">
+          <Command shouldFilter={false}>
+            <CommandInput placeholder="Поиск региона..." value={regionSearch} onValueChange={setRegionSearch} />
+            {regionsLoading && <CommandEmpty>Загрузка...</CommandEmpty>}
+            {!regionsLoading && regions.length === 0 && <CommandEmpty>Регионы не найдены</CommandEmpty>}
+            <CommandGroup>
+              {regions
+                .filter((r: Region) =>
+                  !regionSearch || r.nazvanie.toLowerCase().includes(regionSearch.toLowerCase())
+                )
+                .map((r: Region) => (
                   <CommandItem
-                    key={c.id}
-                    value={String(c.id)}
+                    key={r.id}
+                    value={String(r.id)}
                     onSelect={(currentValue) => {
-                      setValue('city', currentValue);
-                      setCityOpen(false);
-                      setCitySearch('');
+                      setValue('region', currentValue);
+                      setRegionOpen(false);
+                      setRegionSearch('');
                     }}
                   >
-                    <Check className={cn('mr-2 h-4 w-4', cityId === String(c.id) ? 'opacity-100' : 'opacity-0')} />
-                    {c.nazvanie}
+                    <Check className={cn('mr-2 h-4 w-4', region === String(r.id) ? 'opacity-100' : 'opacity-0')} />
+                    {r.nazvanie}
                   </CommandItem>
                 ))}
-              </CommandGroup>
-            </Command>
-          </PopoverContent>
+            </CommandGroup>
+          </Command>
+        </PopoverContent>
         </Popover>
-      </div>
+        </div>
+
+     {/* Город */}
+<div className="space-y-2">
+  <Label>Город</Label>
+  <Popover open={cityOpen} onOpenChange={setCityOpen}>
+    <PopoverTrigger asChild>
+      <Button variant="outline" role="combobox" aria-expanded={cityOpen} className="w-full justify-between">
+        {cityId ? citySuggestions.find(c => String(c.id) === cityId)?.nazvanie : 'Введите или выберите город...'}
+        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+      </Button>
+    </PopoverTrigger>
+    <PopoverContent className="w-full p-0">
+      <Command shouldFilter={false}>
+        <CommandInput
+          placeholder="Поиск города..."
+          value={citySearch}
+          onValueChange={setCitySearch}
+        />
+        {isCityLoading && <CommandEmpty>Загрузка...</CommandEmpty>}
+        {!isCityLoading && citySuggestions.length === 0 && citySearch && <CommandEmpty>Города не найдены</CommandEmpty>}
+        {!isCityLoading && !citySearch && <CommandEmpty>Начните вводить название города</CommandEmpty>}
+        <CommandGroup>
+          {citySuggestions.map((c: any, idx: number) => (
+            <CommandItem
+              key={idx}
+              value={c.nazvanie}
+              onSelect={() => {
+                // При выборе города сохраняем его название, ID пока нет
+                setValue('city', c.nazvanie);
+                setCityId(c.nazvanie); // если нужно хранить отдельно
+                setCityOpen(false);
+                setCitySearch('');
+              }}
+            >
+              <Check className={cn('mr-2 h-4 w-4', cityId === c.nazvanie ? 'opacity-100' : 'opacity-0')} />
+              {c.nazvanie}
+            </CommandItem>
+          ))}
+        </CommandGroup>
+      </Command>
+    </PopoverContent>
+  </Popover>
+</div>\
 
       {cityId && (
         <div className="space-y-2">

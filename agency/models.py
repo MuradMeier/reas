@@ -168,6 +168,8 @@ class MestopolozhenieMixin(models.Model):
 class Region(models.Model):
     nazvanie = models.CharField(max_length=100, unique=True, verbose_name='Название')
     poryadok = models.PositiveSmallIntegerField(default=0, verbose_name='Порядок сортировки')
+    kladr_id = models.CharField(max_length=2, blank=True, null=True, verbose_name='Код КЛАДР (первые 2 символа)')
+    fias_id = models.CharField(max_length=36, blank=True, null=True, verbose_name='ФИАС ID региона')
     class Meta:
         verbose_name = 'Регион'
         verbose_name_plural = 'Регионы'

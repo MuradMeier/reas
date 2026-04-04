@@ -96,16 +96,6 @@ export default function BuyRentForm({ action, objectType, initialValues, onSearc
 
   const handleAddressSelect = (fullAddress: string, data: any) => {
     console.log('Selected address data:', data);
-    const regionCode = data.region_kladr_id?.substring(0, 2);
-    console.log('Region code:', regionCode);
-    console.log('Allowed codes:', settings?.allowed_region_codes);
-    if (regionCode && !settings?.allowed_region_codes.includes(regionCode)) {
-      toast.error('К сожалению, мы не работаем в данном регионе');
-      setAddressInput('');
-      setSelectedAddress(null);
-      setValue('exactAddress', '');
-      return;
-    }
     setAddressInput(fullAddress);
     setSelectedAddress(data);
     setValue('exactAddress', fullAddress);
