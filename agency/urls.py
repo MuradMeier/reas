@@ -38,11 +38,11 @@ router.register(r'technic-choices', TekhnikaViewSet, basename='technicchoice')
 router.register(r'furniture-choices', MebelViewSet, basename='furniturechoice')
 
 urlpatterns = [
-    path('', include(router.urls)),
     path('meeting/confirm/<str:token>/', PodtverzhdenieVstrechiViewSet.as_view({'get': 'get_info', 'post': 'confirm_action'}), name='meeting-confirm-detail'),
     path('init-db/', views.init_db, name='init_db'),
     path('search-object/', search_object, name='search-object'),
     path('api/district-autocomplete/', district_autocomplete, name='district-autocomplete'),
     path('api/mikroraion-autocomplete/', mikroraion_autocomplete, name='mikroraion-autocomplete'),
     path('cities/get_or_create/', get_or_create_city, name='get_or_create_city'),
+    path('', include(router.urls)),
 ]

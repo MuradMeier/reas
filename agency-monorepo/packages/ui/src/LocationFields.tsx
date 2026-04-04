@@ -316,14 +316,21 @@ export function LocationFields({ register, watch, setValue, onAddressSelect }: L
                   <CommandItem
                     key={idx}
                     value={c.nazvanie}
-                    onSelect={() => {
-                      setValue('city', c.nazvanie);
-                      setCityId(c.nazvanie);
-                      setCityType(c.type);
-                      setIsCity(c.type === 'город' || c.type === 'пгт');
-                      setCityOpen(false);
-                      setCitySearch('');
-                    }}
+                    onSelect={async () => {
+    // 1. Сначала получаем ID города
+    try {
+        const response = await api.get('/cities/get_or_create/', {
+            params: { region_id: region, name: c.nazvanie }
+        });
+        const cityId = response.data.id;
+        setValue('city', cityId);
+        setCityId(cityId);
+        setCityOpen(false);
+        setCitySearch('');
+    } catch (error) {
+        console.error('Failed to get/create city', error);
+    }
+}}
                   >
                     <Check className={cn('mr-2 h-4 w-4', cityId === c.nazvanie ? 'opacity-100' : 'opacity-0')} />
                     {c.nazvanie}
